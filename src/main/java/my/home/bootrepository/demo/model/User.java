@@ -32,6 +32,12 @@ public class User {
     @NotEmpty(message = "Field mail cannot be empty")
     @Email(message = "Email should be valid")
     private String email;
+    @Column
+    private String password;
+    @Enumerated(value = EnumType.STRING)
+    private Role role;
+    @Enumerated(value = EnumType.STRING)
+    private Status status;
 
     @Override
     public boolean equals(Object o) {

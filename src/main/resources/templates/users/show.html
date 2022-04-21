@@ -9,6 +9,8 @@
 <p><b>First name:</b><span th:text="${user.firstName}"></span> </p>
 <p><b>Last name:</b><span th:text="${user.lastName}"></span> </p>
 <p><b>Email:</b><span th:text="${user.email}"></span> </p>
+<p><b>Role:</b><span th:text="${user.role}"></span></p>
+<p><b>Status:</b><span th:text="${user.status}"></span></p>
 <a th:href="@{/users/{id}/edit(id=${user.id})}">Edit</a>
 <form th:method="DELETE" th:action="@{/users/{id}(id=${user.id})}">
     <input type="submit" value="Delete"/>

@@ -1,9 +1,13 @@
 package my.home.bootrepository.demo.configs;
 
+import my.home.bootrepository.demo.model.Permission;
 import my.home.bootrepository.demo.model.Role;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
@@ -18,9 +22,17 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
     private final SuccessUserHandler successUserHandler;
+    private final UserDetailsService userDetailsService;
 
-    public WebSecurityConfig(SuccessUserHandler successUserHandler) {
+    public WebSecurityConfig(SuccessUserHandler successUserHandler,
+                             @Qualifier("userDetailsServiceImpl") UserDetailsService userDetailsService) {
         this.successUserHandler = successUserHandler;
+        this.userDetailsService = userDetailsService;
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.authenticationProvider(daoAuthenticationProvider());
     }
 
     @Override
@@ -29,10 +41,10 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .csrf().disable()                                     //это угроза с которой security борется
                 .authorizeRequests()
                 .antMatchers("/", "/index").permitAll()    //общий доступ к страницам
-                .antMatchers(HttpMethod.GET, "/users/**").hasAnyRole(Role.USER.name(), Role.ADMIN.name())
-                .antMatchers(HttpMethod.POST, "/users/**").hasRole(Role.ADMIN.name())
-                .antMatchers(HttpMethod.PATCH, "/users/**").hasRole(Role.ADMIN.name())
-                .antMatchers(HttpMethod.DELETE, "/users/**").hasRole(Role.ADMIN.name())
+                .antMatchers(HttpMethod.GET, "/users/**").hasAuthority(Permission.DEVELOPER_READ.getPermission())
+                .antMatchers(HttpMethod.POST, "/users/**").hasAuthority(Permission.DEVELOPER_WRITE.getPermission())
+                .antMatchers(HttpMethod.PATCH, "/users/**").hasAuthority(Permission.DEVELOPER_WRITE.getPermission())
+                .antMatchers(HttpMethod.DELETE, "/users/**").hasAuthority(Permission.DEVELOPER_WRITE.getPermission())
                 .anyRequest().authenticated()                         // другие запросы через аутентификацию
                 .and()
                 .formLogin().successHandler(successUserHandler) //уже сменили на formLogin//формы для аутетификации нет используем браузерную
@@ -49,12 +61,12 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 User.builder()
                         .username("admin")
                         .password(passwordEncoder().encode("admin"))
-                        .roles(Role.ADMIN.name())
+                        .authorities(Role.ADMIN.getAuthorities())
                         .build(),
                 User.builder()
                         .username("user")
                         .password(passwordEncoder().encode("user"))
-                        .roles(Role.USER.name())
+                        .authorities(Role.USER.getAuthorities())
                         .build()
         );
     }
@@ -62,5 +74,13 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     @Bean
     protected PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
+    }
+
+    @Bean
+    protected DaoAuthenticationProvider daoAuthenticationProvider() {
+        DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
+        daoAuthenticationProvider.setPasswordEncoder(passwordEncoder());
+        daoAuthenticationProvider.setUserDetailsService(userDetailsService);
+        return daoAuthenticationProvider;
     }
 }
